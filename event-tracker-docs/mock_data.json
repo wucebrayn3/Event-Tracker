@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Orientation Day",
+    "date": "2026-06-10",
+    "attendance": 350,
+    "rating": 4.2,
+    "accident_count": 1,
+    "expenditure": 12500
+  },
+  {
+    "name": "Leadership Summit",
+    "date": "2026-07-15",
+    "attendance": 210,
+    "rating": 4.6,
+    "accident_count": 0,
+    "expenditure": 9300
+  },
+  {
+    "name": "Tech Expo",
+    "date": "2026-08-01",
+    "attendance": 500,
+    "rating": 4.4,
+    "accident_count": 3,
+    "expenditure": 18800
+  }
+]

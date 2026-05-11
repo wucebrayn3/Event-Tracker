@@ -1,0 +1,160 @@
+:root {
+  --bg: #f3f7ff;
+  --panel: #ffffff;
+  --primary: #0a5bd3;
+  --text: #1f2d3d;
+  --muted: #5a6a7b;
+  --danger: #b00020;
+  --success: #0a7f3f;
+  --border: #d7deea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: linear-gradient(150deg, #f8fbff 0%, #e8f0ff 100%);
+}
+
+button {
+  border: 1px solid var(--border);
+  background: var(--primary);
+  color: white;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  width: 100%;
+}
+
+.auth-layout,
+.app-layout {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.auth-card,
+.section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 20px rgba(20, 40, 70, 0.05);
+}
+
+.auth-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.auth-switch button.active {
+  background: #0e7a36;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.form-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.form-grid.inline {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: center;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.event-grid,
+.live-grid,
+.chart-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.event-card,
+.live-card,
+.chart-card {
+  background: #fbfdff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: left;
+  color: inherit;
+}
+
+.event-card.selected {
+  border: 2px solid var(--primary);
+}
+
+.table-list {
+  display: grid;
+  gap: 8px;
+}
+
+.table-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.error,
+.success {
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.error {
+  border: 1px solid #fac7d0;
+  background: #ffe8ed;
+  color: var(--danger);
+}
+
+.success {
+  border: 1px solid #b9e8cb;
+  background: #eafff2;
+  color: var(--success);
+}
+
+@media (max-width: 768px) {
+  .app-layout,
+  .auth-layout {
+    padding: 12px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

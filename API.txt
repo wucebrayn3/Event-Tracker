@@ -1,0 +1,255 @@
+Base URL: http://127.0.0.1:8000/api
+
+Use these headers unless noted:
+
+Authorization: Token <your_token> (required for all except register/login)
+Content-Type: application/json (for JSON endpoints)
+Accept: application/json
+For file uploads use:
+
+Authorization: Token <your_token>
+Content-Type: multipart/form-data
+Auth
+
+POST /auth/register/
+Method: POST
+Headers: Content-Type: application/json
+Payload:
+{
+  "username": "student1",
+  "email": "student1@example.com",
+  "password": "StrongPass123",
+  "first_name": "Sam",
+  "last_name": "Lee",
+  "age": 20,
+  "year": "3rd Year",
+  "course": "BSCS",
+  "sex": "male"
+}
+POST /auth/login/
+Method: POST
+Headers: Content-Type: application/json
+Payload:
+{
+  "username": "student1",
+  "password": "StrongPass123"
+}
+GET /auth/me/
+Method: GET
+Headers: Authorization
+
+POST /auth/create-admin/ (superadmin only)
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+
+{
+  "username": "admin1",
+  "password": "AdminPass123",
+  "email": "admin1@example.com",
+  "first_name": "A",
+  "last_name": "Dmin",
+  "age": 35,
+  "year": "",
+  "course": "",
+  "sex": "prefer_not"
+}
+Events
+5. GET /events/?sort_by=time|attendance|alphabetical
+Method: GET
+Headers: Authorization
+
+POST /events/ (admin only)
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+{
+  "name": "Tech Expo 2026",
+  "description": "Annual expo",
+  "location": "Main Hall"
+}
+POST /events/{event_id}/prepare/ (admin only)
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+{
+  "expiry_hours": 72,
+  "code": "EXPO26"
+}
+POST /events/{event_id}/join-committee/
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+{
+  "code": "EXPO26"
+}
+GET /events/{event_id}/committee-members/ (admin only)
+Method: GET
+Headers: Authorization
+
+POST /events/{event_id}/committee-members/ (admin only)
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+
+{
+  "user_id": 5
+}
+DELETE /events/{event_id}/committee-members/{membership_id}/ (admin only)
+Method: DELETE
+Headers: Authorization
+
+POST /events/{event_id}/start/ (admin only)
+Method: POST
+Headers: Authorization
+
+POST /events/{event_id}/end/ (admin only)
+Method: POST
+Headers: Authorization
+
+POST /events/{event_id}/attendance-toggle/ (admin only)
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+
+{
+  "attendance_open": false
+}
+POST /events/{event_id}/pick/ (student role)
+Method: POST
+Headers: Authorization
+
+GET /events/{event_id}/report.csv
+Method: GET
+Headers: Authorization
+Response: text/csv
+
+Attendance
+17. POST /attendance/ (student role, multipart)
+Method: POST
+Headers: Authorization, Content-Type: multipart/form-data
+Form fields:
+
+event: integer
+image_proof: image file
+GET /attendance/review/{event_id}/ (admin or committee, event must be ended)
+Method: GET
+Headers: Authorization
+
+POST /attendance/{attendance_id}/review/ (admin or committee, event must be ended)
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+
+{
+  "status": "approved",
+  "review_note": "Clear image proof"
+}
+status values: approved, rejected
+
+Committee Reports
+20. GET /committee-reports/
+Method: GET
+Headers: Authorization
+
+POST /committee-reports/create/ (committee only)
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+{
+  "event": 1,
+  "title": "Need extra chairs",
+  "content": "Requesting 30 additional chairs.",
+  "report_type": "request"
+}
+report_type values: request, update, issue
+
+POST /committee-reports/{report_id}/respond/ (admin only)
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+{
+  "admin_response": "Approved. Logistics notified.",
+  "is_resolved": true
+}
+Broadcasts
+23. GET /broadcasts/
+Method: GET
+Headers: Authorization
+
+POST /broadcasts/ (admin only)
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+{
+  "event": 1,
+  "target_committee": null,
+  "title": "Assembly Time",
+  "message": "All committees assemble at 8:00 AM."
+}
+Set target_committee to a user ID for specific recipient.
+
+Accidents
+25. GET /accidents/?event_id=1
+Method: GET
+Headers: Authorization
+
+POST /accidents/
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+{
+  "event": 1,
+  "accident_type": "injury",
+  "description": "Minor slip near entrance",
+  "accident_time": "2026-05-10T14:30:00+08:00"
+}
+accident_type values: injury, medical, property, security, other
+
+Ratings
+27. POST /ratings/ (student role)
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+
+{
+  "event": 1,
+  "rating": 5,
+  "comment": "Great event."
+}
+Expenditures
+28. GET /expenditures/?event_id=1
+Method: GET
+Headers: Authorization
+
+POST /expenditures/ (admin only)
+Method: POST
+Headers: Authorization, Content-Type: application/json
+Payload:
+{
+  "event": 1,
+  "description": "Sound system rental",
+  "amount": "4500.00",
+  "spent_on": "2026-05-10"
+}
+Analytics
+30. GET /analytics/event/{event_id}/summary/
+Method: GET
+Headers: Authorization
+
+GET /analytics/event/{event_id}/charts/
+Method: GET
+Headers: Authorization
+
+GET /analytics/live/
+Method: GET
+Headers: Authorization
+Optional query: ?event_id=1
+
+POST /analytics/upload-json/ (multipart)
+Method: POST
+Headers: Authorization, Content-Type: multipart/form-data
+Form fields:
+
+file: .json file
+If you want, I can generate this as a ready-to-import Postman collection JSON next.
