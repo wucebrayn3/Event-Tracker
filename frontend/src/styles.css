@@ -147,6 +147,58 @@ select {
   color: var(--success);
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-frame {
+  background: var(--panel);
+  border-radius: 14px;
+  max-width: 420px;
+  width: 85%;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: var(--muted);
+  line-height: 1;
+  padding: 0;
+}
+
+.modal-close:hover {
+  color: var(--text);
+}
+
+.modal-image {
+  width: 100%;
+  display: block;
+  border-radius: 14px 14px 0 0;
+}
+
+.modal-info {
+  padding: 16px;
+}
+
+.modal-info p {
+  margin: 6px 0;
+}
+
 @media (max-width: 768px) {
   .app-layout,
   .auth-layout {

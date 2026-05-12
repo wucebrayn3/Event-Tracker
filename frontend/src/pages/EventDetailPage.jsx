@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { request } from "../api/client";
+import { request, API_BASE } from "../api/client";
 import ChartsPanel from "../components/ChartsPanel";
 import { useAuth } from "../context/AuthContext";
+
+const API_ORIGIN = API_BASE.replace("/api", "");
 
 export default function EventDetailPage() {
   const { token, user } = useAuth();
@@ -31,6 +33,7 @@ export default function EventDetailPage() {
   const [expenditureForm, setExpenditureForm] = useState({ description: "", quantity: 1, price_per_unit: "" });
   const [users, setUsers] = useState([]);
   const [userRoleFilter, setUserRoleFilter] = useState("");
+  const [previewItem, setPreviewItem] = useState(null);
   const liveIntervalRef = useRef(null);
 
   const isAdmin = user?.role === "admin";
@@ -493,6 +496,52 @@ export default function EventDetailPage() {
         )}
       </div>
 
+      {(isAdmin || isCommittee) && (
+        <div className="section">
+          <h3>Attendance Reviews</h3>
+          <div className="table-list">
+            {attendanceList.map((row) => (
+              <div key={row.id} className="table-item">
+                <span>
+                  {row.student?.username} — {row.status}
+                </span>
+                <div className="row">
+                  <button disabled={actionLoading === `review-${row.id}`} onClick={() => setPreviewItem(row)}>
+                    View Image
+                  </button>
+                  <button disabled={actionLoading === `review-${row.id}`} onClick={() => reviewAttendance(row.id, "approved")}>
+                    {actionLoading === `review-${row.id}` ? "..." : "Approve"}
+                  </button>
+                  <button disabled={actionLoading === `review-${row.id}`} onClick={() => reviewAttendance(row.id, "rejected")}>
+                    {actionLoading === `review-${row.id}` ? "..." : "Reject"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {previewItem && (
+        <div className="modal-overlay" onClick={() => setPreviewItem(null)}>
+          <div className="modal-frame" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setPreviewItem(null)}>&times;</button>
+            <img
+              src={`${API_ORIGIN}${previewItem.image_proof}`}
+              alt="Attendance proof"
+              className="modal-image"
+            />
+            <div className="modal-info">
+              <p><b>Student:</b> {previewItem.student?.username}</p>
+              <p><b>Status:</b> {previewItem.status}</p>
+              {previewItem.review_note && <p><b>Note:</b> {previewItem.review_note}</p>}
+              <p><b>Submitted:</b> {new Date(previewItem.submitted_at).toLocaleString()}</p>
+              {previewItem.reviewed_at && <p><b>Reviewed:</b> {new Date(previewItem.reviewed_at).toLocaleString()}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {isAdmin && (
         <div className="section">
           <h3>Admin Controls</h3>
@@ -525,26 +574,6 @@ export default function EventDetailPage() {
             <button disabled={actionLoading === "generate"} onClick={() => eventAction("prepare", { code: committeeCode || undefined })}>
               {actionLoading === "generate" ? "Processing..." : "Generate/Set Code"}
             </button>
-          </div>
-
-          <h4>Attendance Reviews</h4>
-          <div className="table-list">
-            {attendanceList.map((row) => (
-              <div key={row.id} className="table-item">
-                <span>
-                  {row.student?.username} - {row.status}
-                </span>
-                <div className="row">
-                  <a href={row.image_proof} target="_blank" rel="noreferrer">Open Image</a>
-                  <button disabled={actionLoading === `review-${row.id}`} onClick={() => reviewAttendance(row.id, "approved")}>
-                    {actionLoading === `review-${row.id}` ? "..." : "Approve"}
-                  </button>
-                  <button disabled={actionLoading === `review-${row.id}`} onClick={() => reviewAttendance(row.id, "rejected")}>
-                    {actionLoading === `review-${row.id}` ? "..." : "Reject"}
-                  </button>
-                </div>
-              </div>
-            ))}
           </div>
 
           <h4>Broadcast to Committees</h4>
