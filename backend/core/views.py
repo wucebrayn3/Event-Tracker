@@ -300,9 +300,9 @@ class AttendanceReviewListView(APIView):
 
     def get(self, request, event_id):
         event = get_object_or_404(Event, id=event_id)
-        if event.status != Event.Status.ENDED and not (request.user.is_superuser or request.user.role == User.Role.ADMIN):
+        if event.status not in (Event.Status.ACTIVE, Event.Status.ENDED):
             return Response(
-                {"detail": "Attendance review is only available after the event has ended."},
+                {"detail": "Attendance review is only available during or after the event."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         attendances = Attendance.objects.filter(event=event).order_by("-submitted_at")
@@ -314,9 +314,9 @@ class AttendanceReviewActionView(APIView):
 
     def post(self, request, attendance_id):
         attendance = get_object_or_404(Attendance, id=attendance_id)
-        if attendance.event.status != Event.Status.ENDED:
+        if attendance.event.status not in (Event.Status.ACTIVE, Event.Status.ENDED):
             return Response(
-                {"detail": "Attendance review is only available after the event has ended."},
+                {"detail": "Attendance review is only available during or after the event."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if not (

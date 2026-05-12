@@ -165,13 +165,17 @@ export default function EventDetailPage() {
   }, [canViewCharts, loadCharts, showError]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin && !isCommittee) return;
     loadAttendance().catch(() => null);
+  }, [isAdmin, isCommittee, loadAttendance]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
     loadBroadcasts().catch(() => null);
     loadCommitteeReports().catch(() => null);
     loadAccidentReports().catch(() => null);
     loadExpenditures().catch(() => null);
-  }, [isAdmin, loadAttendance, loadBroadcasts, loadCommitteeReports, loadAccidentReports, loadExpenditures]);
+  }, [isAdmin, loadBroadcasts, loadCommitteeReports, loadAccidentReports, loadExpenditures]);
 
   useEffect(() => {
     if (!isAdmin) return;

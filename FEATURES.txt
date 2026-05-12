@@ -9,6 +9,7 @@ Authentication & Roles
 - Three roles: student, staff (committee), admin
 - Superadmin can create admin accounts
 - Token-based authentication for all protected endpoints
+- Role-based access control on every action
 
 Events
 ------
@@ -22,23 +23,26 @@ Events
 - Toggle attendance availability (admin only)
 - Pick/select an event (student only)
 - Generate committee join codes (admin)
-- Join committee via code (students/staff)
+- Join committee via code (students/staff) — admins cannot join committees
 - Manage committee members (admin: list, add, remove)
 - Download event report as CSV
+- Ended events moved to History archive on dashboard
 
 Attendance
 ----------
 - Submit attendance with image proof (student, multipart upload)
-- Review attendance list for ended events (admin/committee)
+- Review attendance list (viewing, approving, rejecting allowed during or after event for admin/committee)
 - Approve or reject attendance submissions (admin/committee)
 - Status tracking: pending -> approved/rejected
+- Admin can view all attendance with attached images
 
 Committee Reports
 -----------------
-- Submit committee reports (committee members)
+- Submit committee reports (committee members only)
 - Report types: request, update, issue
-- List reports (admin sees all, committee sees own)
-- Admin can respond to and resolve reports
+- List reports — committee sees own; admin sees reports for events they created
+- Admin can respond to and resolve reports inline
+- Admins cannot submit committee reports
 
 Broadcasts
 ----------
@@ -50,35 +54,46 @@ Accidents
 ---------
 - Report accidents with type and description
 - Accident types: injury, medical, property, security, other
-- Admin sees all reports, others see only their own
+- Only admins can view accident reports (all users can submit)
 - Filter by event
 
 Ratings
 -------
 - Students rate events (1-5 scale) with optional comment
 - One rating per student per event
+- Admins cannot rate events
 
 Expenditures
 ------------
-- Record event expenditures (admin only)
-- List expenditures, filterable by event
+- Add expenditure entries during event preparation only (admin)
+- Fields: item name, quantity, price per unit, total (auto-calculated)
+- List expenditures for an event, filterable by event
+
+Users
+-----
+- List all registered users (admin only)
+- Filter users by role (student, staff, admin)
 
 Analytics & Data Visualization
-------------------------------
+-------------------------------
 - Event summary with attendance, demographics, ratings, accidents, expenditure
 - Chart-ready data payload (bar, pie, line charts)
 - Live metrics with real-time polling (every 5 seconds)
 - JSON file upload for external data analysis
-- Download event analytics as PDF (admin only)
+- Download single event analytics as PDF (admin only)
 - Download all events analytics as PDF (admin only)
+- Visualizations visible to admin and committee members only
 
 Frontend (React)
 ----------------
-- Dashboard with event list and live metrics
-- Event detail page with role-based views
-- Students: pick events, submit attendance, join committees, report accidents, rate
-- Committee: same as student + view data visualizations
-- Admin: full controls + data visualizations + attendance reviews + broadcasts + PDF download
-- System feedback: loading states, success/error messages on every action
-- Real-time live metrics polling
-- URL-based routing (/dashboard, /events/:id)
+- Dashboard with active event list and live metrics
+- Event History archive for ended events
+- Event detail page with URL-based routing (/events/:id)
+- Role-based UI:
+  - Students: pick events, submit attendance, join committee, report accidents, rate
+  - Committee: above + view charts + submit committee reports
+  - Admin: event lifecycle controls + view all data + attendance reviews + broadcasts + expenditures + accident reports + committee reports + user list + PDF download
+- System feedback: loading states with "Processing..." text on every button, specific success/error messages
+- Buttons disabled during their own action to prevent double-submission
+- Real-time live metrics polling every 5 seconds
+- Role-based action visibility (admins can't see student/committee forms)

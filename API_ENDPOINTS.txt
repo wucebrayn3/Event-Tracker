@@ -61,7 +61,7 @@ Events
 GET /events/
   Description: List all events with sort options
   Headers: Authorization
-  Query params: ?sort_by=time|attendance|alphabetical
+  Query: ?sort_by=time|attendance|alphabetical
   Response: [ { event objects with committee_count, attendance_count, approved_attendance_count }, ... ]
 
 GET /events/{event_id}/
@@ -70,7 +70,7 @@ GET /events/{event_id}/
   Response: { event object }
 
 GET /events/{event_id}/my-committee-status/
-  Description: Check if current user is committee for this event
+  Description: Check if current user is committee for this event (returns false for admins)
   Headers: Authorization
   Response: { "is_committee": true/false }
 
@@ -87,7 +87,7 @@ POST /events/{event_id}/prepare/
   Response: { committee_code object }
 
 POST /events/{event_id}/join-committee/
-  Description: Join event committee using a code
+  Description: Join event committee using a code (admins cannot join)
   Headers: Authorization, Content-Type: application/json
   Body: { "code": "EXPO26" }
   Response: { "joined": true, "membership": { ... } }
@@ -144,12 +144,12 @@ POST /attendance/
   Response: { attendance object }
 
 GET /attendance/review/{event_id}/
-  Description: List attendance submissions for review (admin/committee, event must be ended)
+  Description: List attendance submissions (allowed during or after event for admin/committee)
   Headers: Authorization
   Response: [ { attendance objects }, ... ]
 
 POST /attendance/{attendance_id}/review/
-  Description: Approve or reject an attendance submission (admin/committee)
+  Description: Approve or reject an attendance submission (admin/committee, allowed during or after event)
   Headers: Authorization, Content-Type: application/json
   Body: { "status": "approved", "review_note": "Clear image proof" }
   Status values: approved, rejected
@@ -159,12 +159,13 @@ Committee Reports
 -----------------
 
 GET /committee-reports/
-  Description: List committee reports (admin sees all, committee sees own)
+  Description: List committee reports. Admin can filter by event_id; non-superuser admins only see reports for events they created.
   Headers: Authorization
+  Query: ?event_id=1
   Response: [ { report objects }, ... ]
 
 POST /committee-reports/create/
-  Description: Submit a committee report (committee member only)
+  Description: Submit a committee report (committee members only; admins cannot submit)
   Headers: Authorization, Content-Type: application/json
   Body: { "event": 1, "title": "Need extra chairs", "content": "Requesting 30 additional chairs.", "report_type": "request" }
   report_type values: request, update, issue
@@ -195,13 +196,13 @@ Accidents
 ---------
 
 GET /accidents/
-  Description: List accident reports (admin sees all, others see own)
+  Description: List accident reports (admin only — non-admins get 403)
   Headers: Authorization
-  Query params: ?event_id=1
+  Query: ?event_id=1
   Response: [ { accident objects }, ... ]
 
 POST /accidents/
-  Description: Report an accident
+  Description: Report an accident (any authenticated user)
   Headers: Authorization, Content-Type: application/json
   Body: { "event": 1, "accident_type": "injury", "description": "Minor slip near entrance", "accident_time": "2026-05-10T14:30:00+08:00" }
   accident_type values: injury, medical, property, security, other
@@ -222,14 +223,24 @@ Expenditures
 GET /expenditures/
   Description: List expenditures
   Headers: Authorization
-  Query params: ?event_id=1
-  Response: [ { expenditure objects }, ... ]
+  Query: ?event_id=1
+  Response: [ { expenditure objects with id, event, description, quantity, price_per_unit, amount, spent_on, added_by, created_at }, ... ]
 
 POST /expenditures/
-  Description: Add an expenditure (admin only)
+  Description: Add an expenditure entry (admin only, event must be in preparation phase)
   Headers: Authorization, Content-Type: application/json
-  Body: { "event": 1, "description": "Sound system rental", "amount": "4500.00", "spent_on": "2026-05-10" }
+  Body: { "event": 1, "description": "Sound system rental", "quantity": 2, "price_per_unit": "2250.00" }
+  Note: amount is auto-calculated as quantity * price_per_unit (read-only)
   Response: { expenditure object }
+
+Users
+-----
+
+GET /users/
+  Description: List all registered users (admin only)
+  Headers: Authorization
+  Query: ?role=student|staff|admin
+  Response: [ { user objects with id, username, email, role, first_name, last_name, age, year, course, sex }, ... ]
 
 Analytics
 ---------
@@ -268,7 +279,7 @@ GET /analytics/pdf/
 GET /analytics/live/
   Description: Get live metrics for all events or a specific event
   Headers: Authorization
-  Query params: ?event_id=1
+  Query: ?event_id=1
   Response: { "timestamp": "...", "events": [ { "event_id", "event_name", "status", "attendance_open", "attendance_population", "approved_attendance_population", "accident_count", "avg_experience_rating" }, ... ] }
 
 POST /analytics/upload-json/
