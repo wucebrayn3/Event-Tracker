@@ -48,7 +48,14 @@ from .serializers import (
     RegisterSerializer,
     UserSerializer,
 )
-from .services import analyze_json_payload, build_chart_payload, build_event_summary, live_metrics
+from .services import (
+    analyze_json_payload,
+    build_all_events_pdf,
+    build_chart_payload,
+    build_event_pdf,
+    build_event_summary,
+    live_metrics,
+)
 
 UserModel = get_user_model()
 
@@ -135,6 +142,8 @@ class EventJoinCommitteeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, event_id):
+        if request.user.is_superuser or request.user.role == User.Role.ADMIN:
+            return Response({"detail": "Admins cannot join committees."}, status=status.HTTP_403_FORBIDDEN)
         event = get_object_or_404(Event, id=event_id)
         serializer = CommitteeJoinSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -234,6 +243,25 @@ class EventAttendanceToggleView(APIView):
         event.attendance_open = serializer.validated_data["attendance_open"]
         event.save(update_fields=["attendance_open", "updated_at"])
         return Response({"attendance_open": event.attendance_open})
+
+
+class EventDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, event_id):
+        event = get_object_or_404(Event, id=event_id)
+        return Response(EventSerializer(event).data)
+
+
+class MyCommitteeStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, event_id):
+        event = get_object_or_404(Event, id=event_id)
+        if request.user.is_superuser or request.user.role == User.Role.ADMIN:
+            return Response({"is_committee": False})
+        is_committee = user_is_committee(request.user, event)
+        return Response({"is_committee": is_committee})
 
 
 class EventPickView(APIView):
@@ -454,6 +482,27 @@ class LiveMetricsView(APIView):
         event_id = request.query_params.get("event_id")
         event = get_object_or_404(Event, id=event_id) if event_id else None
         return Response(live_metrics(event))
+
+
+class AnalyticsPDFView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def get(self, request, event_id):
+        event = get_object_or_404(Event, id=event_id)
+        buffer = build_event_pdf(event)
+        response = HttpResponse(buffer, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="event_{event_id}_analytics.pdf"'
+        return response
+
+
+class AllEventsPDFView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        buffer = build_all_events_pdf()
+        response = HttpResponse(buffer, content_type="application/pdf")
+        response["Content-Disposition"] = 'attachment; filename="all_events_analytics.pdf"'
+        return response
 
 
 class JSONAnalyzeUploadView(APIView):

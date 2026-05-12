@@ -1,9 +1,15 @@
 from collections import Counter
 from datetime import timedelta
+from io import BytesIO
 
 from django.db.models import Avg, Count, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from .models import AccidentReport, Attendance, Event, ExperienceRating, Expenditure, User
 
@@ -125,6 +131,181 @@ def live_metrics(event: Event | None = None) -> dict:
             }
         )
     return {"timestamp": now, "events": payload}
+
+
+def build_event_pdf(event: Event) -> BytesIO:
+    summary = build_event_summary(event)
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, title=f"Analytics Report - {event.name}")
+    styles = getSampleStyleSheet()
+    elements = []
+
+    elements.append(Paragraph(f"Analytics Report: {event.name}", styles["Title"]))
+    elements.append(Spacer(1, 0.2 * inch))
+
+    info_data = [
+        ["Event Name", event.name],
+        ["Location", event.location or "N/A"],
+        ["Status", event.status],
+        ["Duration (hrs)", str(summary["event"]["duration_hours"])],
+    ]
+    info_table = Table(info_data, colWidths=[2 * inch, 4 * inch])
+    info_table.setStyle(
+        TableStyle([
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ])
+    )
+    elements.append(info_table)
+    elements.append(Spacer(1, 0.3 * inch))
+
+    elements.append(Paragraph("Summary Metrics", styles["Heading2"]))
+    metrics_data = [
+        ["Metric", "Value"],
+        ["Attendance Population", str(summary["attendance_population"])],
+        ["Approved Attendance", str(summary["approved_attendance_population"])],
+        ["Committee Population", str(summary["committee_population"])],
+        ["Accident Count", str(summary["accident_count"])],
+        ["Average Rating", str(summary["avg_experience_rating"])],
+        ["Rating Submissions", str(summary["rating_submissions"])],
+        ["Total Expenditure", f'${summary["event_expenditure_total"]:.2f}'],
+    ]
+    metrics_table = Table(metrics_data, colWidths=[3 * inch, 3 * inch])
+    metrics_table.setStyle(
+        TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ])
+    )
+    elements.append(metrics_table)
+    elements.append(Spacer(1, 0.3 * inch))
+
+    elements.append(Paragraph("Demographics (Sex)", styles["Heading2"]))
+    sex_data = [["Sex", "Count"]] + [[str(k), str(v)] for k, v in summary["demographics"]["sex"].items()]
+    sex_table = Table(sex_data, colWidths=[3 * inch, 3 * inch])
+    sex_table.setStyle(
+        TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ])
+    )
+    elements.append(sex_table)
+    elements.append(Spacer(1, 0.3 * inch))
+
+    elements.append(Paragraph("Accidents by Type", styles["Heading2"]))
+    accident_data = [["Type", "Count"]] + [
+        [str(a["accident_type"]), str(a["count"])] for a in summary["accident_by_type"]
+    ]
+    if len(accident_data) == 1:
+        accident_data.append(["None", "0"])
+    accident_table = Table(accident_data, colWidths=[3 * inch, 3 * inch])
+    accident_table.setStyle(
+        TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ])
+    )
+    elements.append(accident_table)
+    elements.append(Spacer(1, 0.3 * inch))
+
+    elements.append(Paragraph("Demographics (Course & Year)", styles["Heading2"]))
+    course_data = [["Course", "Count"]] + [[str(k), str(v)] for k, v in summary["demographics"]["course"].items()]
+    course_table = Table(course_data, colWidths=[3 * inch, 3 * inch])
+    course_table.setStyle(
+        TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ])
+    )
+    elements.append(course_table)
+    elements.append(Spacer(1, 0.15 * inch))
+
+    year_data = [["Year", "Count"]] + [[str(k), str(v)] for k, v in summary["demographics"]["year"].items()]
+    year_table = Table(year_data, colWidths=[3 * inch, 3 * inch])
+    year_table.setStyle(
+        TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ])
+    )
+    elements.append(year_table)
+
+    doc.build(elements)
+    buf.seek(0)
+    return buf
+
+
+def build_all_events_pdf() -> BytesIO:
+    events = Event.objects.all().order_by("name")
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, title="All Events Analytics Report")
+    styles = getSampleStyleSheet()
+    elements = []
+
+    elements.append(Paragraph("All Events Analytics Report", styles["Title"]))
+    elements.append(Spacer(1, 0.3 * inch))
+
+    for event in events:
+        summary = build_event_summary(event)
+        elements.append(Paragraph(f"{event.name}", styles["Heading2"]))
+
+        info_data = [
+            ["Location", event.location or "N/A"],
+            ["Status", event.status],
+            ["Attendance", str(summary["attendance_population"])],
+            ["Approved", str(summary["approved_attendance_population"])],
+            ["Accidents", str(summary["accident_count"])],
+            ["Avg Rating", str(summary["avg_experience_rating"])],
+            ["Expenditure", f'${summary["event_expenditure_total"]:.2f}'],
+        ]
+        info_table = Table(info_data, colWidths=[2 * inch, 4 * inch])
+        info_table.setStyle(
+            TableStyle([
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ])
+        )
+        elements.append(info_table)
+        elements.append(Spacer(1, 0.2 * inch))
+
+    doc.build(elements)
+    buf.seek(0)
+    return buf
 
 
 def analyze_json_payload(payload) -> dict:

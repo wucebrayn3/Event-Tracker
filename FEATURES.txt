@@ -1,0 +1,84 @@
+FEATURES
+========
+
+Authentication & Roles
+----------------------
+- Register new user (default role: student)
+- Login with username/password, returns auth token
+- View current user profile
+- Three roles: student, staff (committee), admin
+- Superadmin can create admin accounts
+- Token-based authentication for all protected endpoints
+
+Events
+------
+- List all events with sort options (time, attendance, alphabetical)
+- Create event (admin only)
+- View single event details
+- Event lifecycle: preparation -> active -> ended
+- Initiate event preparation with optional committee join code (admin)
+- Start event (admin only)
+- End event (admin only)
+- Toggle attendance availability (admin only)
+- Pick/select an event (student only)
+- Generate committee join codes (admin)
+- Join committee via code (students/staff)
+- Manage committee members (admin: list, add, remove)
+- Download event report as CSV
+
+Attendance
+----------
+- Submit attendance with image proof (student, multipart upload)
+- Review attendance list for ended events (admin/committee)
+- Approve or reject attendance submissions (admin/committee)
+- Status tracking: pending -> approved/rejected
+
+Committee Reports
+-----------------
+- Submit committee reports (committee members)
+- Report types: request, update, issue
+- List reports (admin sees all, committee sees own)
+- Admin can respond to and resolve reports
+
+Broadcasts
+----------
+- Admin sends broadcasts to committees
+- Target specific committee member or all
+- Committee members see broadcasts targeted to them or general
+
+Accidents
+---------
+- Report accidents with type and description
+- Accident types: injury, medical, property, security, other
+- Admin sees all reports, others see only their own
+- Filter by event
+
+Ratings
+-------
+- Students rate events (1-5 scale) with optional comment
+- One rating per student per event
+
+Expenditures
+------------
+- Record event expenditures (admin only)
+- List expenditures, filterable by event
+
+Analytics & Data Visualization
+------------------------------
+- Event summary with attendance, demographics, ratings, accidents, expenditure
+- Chart-ready data payload (bar, pie, line charts)
+- Live metrics with real-time polling (every 5 seconds)
+- JSON file upload for external data analysis
+- Download event analytics as PDF (admin only)
+- Download all events analytics as PDF (admin only)
+
+Frontend (React)
+----------------
+- Dashboard with event list and live metrics
+- Event detail page with role-based views
+- Students: pick events, submit attendance, join committees, report accidents, rate
+- Committee: same as student + view data visualizations
+- Admin: full controls + data visualizations + attendance reviews + broadcasts + PDF download
+- System feedback: loading states, success/error messages on every action
+- Real-time live metrics polling
+- URL-based routing (/dashboard, /events/:id)

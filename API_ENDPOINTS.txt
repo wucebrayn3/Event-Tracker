@@ -1,0 +1,280 @@
+API ENDPOINTS
+=============
+
+Base URL: http://127.0.0.1:8000/api
+
+Common Headers
+--------------
+Authorization: Token <your_token>  (required for all except register/login)
+Content-Type: application/json     (for JSON payloads)
+For file uploads use Content-Type: multipart/form-data
+
+Authentication
+--------------
+
+POST /auth/register/
+  Description: Register a new user (role defaults to "student")
+  Headers: Content-Type: application/json
+  Body:
+  {
+    "username": "student1",
+    "password": "StrongPass123",
+    "email": "student1@example.com",
+    "first_name": "Sam",
+    "last_name": "Lee",
+    "age": 20,
+    "year": "3rd Year",
+    "course": "BSCS",
+    "sex": "male"
+  }
+  Response: { "token": "...", "user": { ... } }
+
+POST /auth/login/
+  Description: Login and receive auth token
+  Headers: Content-Type: application/json
+  Body: { "username": "student1", "password": "StrongPass123" }
+  Response: { "token": "...", "user": { ... } }
+
+GET /auth/me/
+  Description: Get current authenticated user profile
+  Headers: Authorization
+  Response: { user object }
+
+POST /auth/create-admin/
+  Description: Create an admin user (superadmin only)
+  Headers: Authorization, Content-Type: application/json
+  Body:
+  {
+    "username": "admin1",
+    "password": "AdminPass123",
+    "email": "admin1@example.com",
+    "first_name": "A",
+    "last_name": "Dmin",
+    "age": 35,
+    "sex": "prefer_not"
+  }
+  Response: { "token": "...", "user": { ... } }
+
+Events
+------
+
+GET /events/
+  Description: List all events with sort options
+  Headers: Authorization
+  Query params: ?sort_by=time|attendance|alphabetical
+  Response: [ { event objects with committee_count, attendance_count, approved_attendance_count }, ... ]
+
+GET /events/{event_id}/
+  Description: Get single event details
+  Headers: Authorization
+  Response: { event object }
+
+GET /events/{event_id}/my-committee-status/
+  Description: Check if current user is committee for this event
+  Headers: Authorization
+  Response: { "is_committee": true/false }
+
+POST /events/
+  Description: Create a new event (admin only)
+  Headers: Authorization, Content-Type: application/json
+  Body: { "name": "Tech Expo 2026", "description": "Annual expo", "location": "Main Hall" }
+  Response: { event object }
+
+POST /events/{event_id}/prepare/
+  Description: Initiate event preparation, optionally set committee code (admin only)
+  Headers: Authorization, Content-Type: application/json
+  Body: { "expiry_hours": 72, "code": "EXPO26" }    // code is optional
+  Response: { committee_code object }
+
+POST /events/{event_id}/join-committee/
+  Description: Join event committee using a code
+  Headers: Authorization, Content-Type: application/json
+  Body: { "code": "EXPO26" }
+  Response: { "joined": true, "membership": { ... } }
+
+GET /events/{event_id}/committee-members/
+  Description: List committee members for event (admin only)
+  Headers: Authorization
+  Response: [ { membership objects }, ... ]
+
+POST /events/{event_id}/committee-members/
+  Description: Add a user to committee (admin only)
+  Headers: Authorization, Content-Type: application/json
+  Body: { "user_id": 5 }
+  Response: { membership object }
+
+DELETE /events/{event_id}/committee-members/{membership_id}/
+  Description: Remove a committee member (admin only)
+  Headers: Authorization
+  Response: 204 No Content
+
+POST /events/{event_id}/start/
+  Description: Start an event (admin only)
+  Headers: Authorization
+  Response: { event object }
+
+POST /events/{event_id}/end/
+  Description: End an event (admin only)
+  Headers: Authorization
+  Response: { event object }
+
+POST /events/{event_id}/attendance-toggle/
+  Description: Open or close attendance for an event (admin only)
+  Headers: Authorization, Content-Type: application/json
+  Body: { "attendance_open": true/false }
+  Response: { "attendance_open": true/false }
+
+POST /events/{event_id}/pick/
+  Description: Student picks/selects an event (student role only)
+  Headers: Authorization
+  Response: { selection object }
+
+GET /events/{event_id}/report.csv
+  Description: Download event report as CSV
+  Headers: Authorization
+  Response: text/csv file download
+
+Attendance
+----------
+
+POST /attendance/
+  Description: Submit attendance with image proof (student, multipart)
+  Headers: Authorization, Content-Type: multipart/form-data
+  Fields: event (integer), image_proof (file)
+  Response: { attendance object }
+
+GET /attendance/review/{event_id}/
+  Description: List attendance submissions for review (admin/committee, event must be ended)
+  Headers: Authorization
+  Response: [ { attendance objects }, ... ]
+
+POST /attendance/{attendance_id}/review/
+  Description: Approve or reject an attendance submission (admin/committee)
+  Headers: Authorization, Content-Type: application/json
+  Body: { "status": "approved", "review_note": "Clear image proof" }
+  Status values: approved, rejected
+  Response: { attendance object }
+
+Committee Reports
+-----------------
+
+GET /committee-reports/
+  Description: List committee reports (admin sees all, committee sees own)
+  Headers: Authorization
+  Response: [ { report objects }, ... ]
+
+POST /committee-reports/create/
+  Description: Submit a committee report (committee member only)
+  Headers: Authorization, Content-Type: application/json
+  Body: { "event": 1, "title": "Need extra chairs", "content": "Requesting 30 additional chairs.", "report_type": "request" }
+  report_type values: request, update, issue
+  Response: { report object }
+
+POST /committee-reports/{report_id}/respond/
+  Description: Admin responds to a committee report (admin only)
+  Headers: Authorization, Content-Type: application/json
+  Body: { "admin_response": "Approved. Logistics notified.", "is_resolved": true }
+  Response: { report object }
+
+Broadcasts
+----------
+
+GET /broadcasts/
+  Description: List broadcasts (admin sees all, committee sees relevant)
+  Headers: Authorization
+  Response: [ { broadcast objects }, ... ]
+
+POST /broadcasts/
+  Description: Send a broadcast (admin only)
+  Headers: Authorization, Content-Type: application/json
+  Body: { "event": 1, "title": "Assembly Time", "message": "All committees assemble at 8:00 AM.", "target_committee": null }
+  target_committee: null for all committees, or a user ID for specific recipient
+  Response: { broadcast object }
+
+Accidents
+---------
+
+GET /accidents/
+  Description: List accident reports (admin sees all, others see own)
+  Headers: Authorization
+  Query params: ?event_id=1
+  Response: [ { accident objects }, ... ]
+
+POST /accidents/
+  Description: Report an accident
+  Headers: Authorization, Content-Type: application/json
+  Body: { "event": 1, "accident_type": "injury", "description": "Minor slip near entrance", "accident_time": "2026-05-10T14:30:00+08:00" }
+  accident_type values: injury, medical, property, security, other
+  Response: { accident object }
+
+Ratings
+-------
+
+POST /ratings/
+  Description: Rate an event (student role only)
+  Headers: Authorization, Content-Type: application/json
+  Body: { "event": 1, "rating": 5, "comment": "Great event." }
+  Response: { rating object }
+
+Expenditures
+------------
+
+GET /expenditures/
+  Description: List expenditures
+  Headers: Authorization
+  Query params: ?event_id=1
+  Response: [ { expenditure objects }, ... ]
+
+POST /expenditures/
+  Description: Add an expenditure (admin only)
+  Headers: Authorization, Content-Type: application/json
+  Body: { "event": 1, "description": "Sound system rental", "amount": "4500.00", "spent_on": "2026-05-10" }
+  Response: { expenditure object }
+
+Analytics
+---------
+
+GET /analytics/event/{event_id}/summary/
+  Description: Get full analytics summary for an event
+  Headers: Authorization
+  Response: {
+    "event": { "id", "name", "location", "status", "start_time", "end_time", "duration_hours" },
+    "attendance_population": int,
+    "approved_attendance_population": int,
+    "committee_population": int,
+    "avg_experience_rating": float,
+    "rating_submissions": int,
+    "accident_count": int,
+    "accident_by_type": [ { "accident_type", "count" } ],
+    "event_expenditure_total": float,
+    "demographics": { "sex": {}, "course": {}, "year": {} }
+  }
+
+GET /analytics/event/{event_id}/charts/
+  Description: Get chart-ready analytics payload (bar, pie, line, ratings)
+  Headers: Authorization
+  Response: { "summary": {...}, "bar": {...}, "pie": {...}, "line": {...}, "ratings": {...} }
+
+GET /analytics/event/{event_id}/pdf/
+  Description: Download event analytics as PDF (admin only)
+  Headers: Authorization
+  Response: application/pdf file download
+
+GET /analytics/pdf/
+  Description: Download all events analytics as PDF (admin only)
+  Headers: Authorization
+  Response: application/pdf file download
+
+GET /analytics/live/
+  Description: Get live metrics for all events or a specific event
+  Headers: Authorization
+  Query params: ?event_id=1
+  Response: { "timestamp": "...", "events": [ { "event_id", "event_name", "status", "attendance_open", "attendance_population", "approved_attendance_population", "accident_count", "avg_experience_rating" }, ... ] }
+
+POST /analytics/upload-json/
+  Description: Upload a JSON file for external data analysis
+  Headers: Authorization, Content-Type: multipart/form-data
+  Fields: file (.json)
+  Response: { "summary": {...}, "bar": {...}, "line": {...}, "pie": {...} }
+  Expected JSON format: list of records or { "records": [...] }
+  Each record can have: name, attendance, rating, expenditure, accident_count
