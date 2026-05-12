@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -192,7 +192,13 @@ class ExperienceRating(models.Model):
 class Expenditure(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="expenditures")
     description = models.CharField(max_length=180)
+    quantity = models.PositiveIntegerField(default=1)
+    price_per_unit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    spent_on = models.DateField(default=timezone.now)
+    spent_on = models.DateField(default=date.today)
     added_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="expenditures_added")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        self.amount = self.quantity * self.price_per_unit
+        super().save(*args, **kwargs)

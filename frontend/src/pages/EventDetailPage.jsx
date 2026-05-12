@@ -25,6 +25,12 @@ export default function EventDetailPage() {
   const [attendanceList, setAttendanceList] = useState([]);
   const [broadcastForm, setBroadcastForm] = useState({ title: "", message: "", target_committee: "" });
   const [broadcasts, setBroadcasts] = useState([]);
+  const [committeeReports, setCommitteeReports] = useState([]);
+  const [accidentReports, setAccidentReports] = useState([]);
+  const [expenditures, setExpenditures] = useState([]);
+  const [expenditureForm, setExpenditureForm] = useState({ description: "", quantity: 1, price_per_unit: "" });
+  const [users, setUsers] = useState([]);
+  const [userRoleFilter, setUserRoleFilter] = useState("");
   const liveIntervalRef = useRef(null);
 
   const isAdmin = user?.role === "admin";
@@ -87,6 +93,57 @@ export default function EventDetailPage() {
     );
   }, [id, token]);
 
+  const loadCommitteeReports = useCallback(async () => {
+    const data = await request(`/committee-reports/?event_id=${id}`, { token }).catch(() => []);
+    setCommitteeReports(Array.isArray(data) ? data : []);
+  }, [id, token]);
+
+  const loadExpenditures = useCallback(async () => {
+    const data = await request(`/expenditures/?event_id=${id}`, { token }).catch(() => []);
+    setExpenditures(Array.isArray(data) ? data : []);
+  }, [id, token]);
+
+  const submitExpenditure = async () => {
+    if (!event) return;
+    const ok = await runAction("expenditure", async () => {
+      await request("/expenditures/", {
+        method: "POST",
+        token,
+        body: {
+          event: event.id,
+          description: expenditureForm.description,
+          quantity: Number(expenditureForm.quantity),
+          price_per_unit: expenditureForm.price_per_unit,
+        }
+      });
+      setExpenditureForm({ description: "", quantity: 1, price_per_unit: "" });
+      await loadExpenditures();
+    });
+    if (ok) showInfo("Expenditure added.");
+  };
+
+  const loadAccidentReports = useCallback(async () => {
+    const data = await request(`/accidents/?event_id=${id}`, { token }).catch(() => []);
+    setAccidentReports(Array.isArray(data) ? data : []);
+  }, [id, token]);
+
+  const respondReport = async (reportId, adminResponse, isResolved) => {
+    const ok = await runAction(`respond-${reportId}`, async () => {
+      await request(`/committee-reports/${reportId}/respond/`, {
+        method: "POST",
+        token,
+        body: { admin_response: adminResponse, is_resolved: isResolved }
+      });
+      await loadCommitteeReports();
+    });
+    if (ok) showInfo("Report response saved.");
+  };
+
+  const loadUsers = useCallback(async () => {
+    const data = await request(`/users/${userRoleFilter ? `?role=${userRoleFilter}` : ""}`, { token }).catch(() => []);
+    setUsers(Array.isArray(data) ? data : []);
+  }, [token, userRoleFilter]);
+
   const loadLive = useCallback(async () => {
     const data = await request(`/analytics/live/?event_id=${id}`, { token });
     setLive(data);
@@ -111,7 +168,15 @@ export default function EventDetailPage() {
     if (!isAdmin) return;
     loadAttendance().catch(() => null);
     loadBroadcasts().catch(() => null);
-  }, [isAdmin, loadAttendance, loadBroadcasts]);
+    loadCommitteeReports().catch(() => null);
+    loadAccidentReports().catch(() => null);
+    loadExpenditures().catch(() => null);
+  }, [isAdmin, loadAttendance, loadBroadcasts, loadCommitteeReports, loadAccidentReports, loadExpenditures]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    loadUsers().catch(() => null);
+  }, [isAdmin, loadUsers]);
 
   const eventAction = async (action, body = {}) => {
     if (!event) return;
@@ -325,7 +390,7 @@ export default function EventDetailPage() {
       <div className="section">
         <h3>Actions</h3>
 
-        {isStudent && (
+        {!isAdmin && isStudent && (
           <div className="row" style={{ marginTop: 8 }}>
             <button disabled={actionLoading === "pick"} onClick={pickEvent}>
               {actionLoading === "pick" ? "Processing..." : "Pick This Event"}
@@ -333,23 +398,27 @@ export default function EventDetailPage() {
           </div>
         )}
 
-        <div className="row" style={{ marginTop: 8 }}>
-          <input
-            placeholder="Committee code"
-            value={committeeCode}
-            onChange={(e) => setCommitteeCode(e.target.value)}
-          />
-          <button disabled={actionLoading === "join"} onClick={joinCommittee}>
-            {actionLoading === "join" ? "Processing..." : "Join Committee"}
-          </button>
-        </div>
+        {!isAdmin && (
+          <div className="row" style={{ marginTop: 8 }}>
+            <input
+              placeholder="Committee code"
+              value={committeeCode}
+              onChange={(e) => setCommitteeCode(e.target.value)}
+            />
+            <button disabled={actionLoading === "join"} onClick={joinCommittee}>
+              {actionLoading === "join" ? "Processing..." : "Join Committee"}
+            </button>
+          </div>
+        )}
 
-        <div className="row" style={{ marginTop: 8 }}>
-          <input type="file" accept="image/*" onChange={(e) => setAttendanceFile(e.target.files?.[0] || null)} />
-          <button disabled={actionLoading === "attendance" || !attendanceFile} onClick={submitAttendance}>
-            {actionLoading === "attendance" ? "Processing..." : "Submit Attendance Image"}
-          </button>
-        </div>
+        {!isAdmin && (
+          <div className="row" style={{ marginTop: 8 }}>
+            <input type="file" accept="image/*" onChange={(e) => setAttendanceFile(e.target.files?.[0] || null)} />
+            <button disabled={actionLoading === "attendance" || !attendanceFile} onClick={submitAttendance}>
+              {actionLoading === "attendance" ? "Processing..." : "Submit Attendance Image"}
+            </button>
+          </div>
+        )}
 
         <div className="form-grid inline" style={{ marginTop: 8 }}>
           <select
@@ -372,48 +441,52 @@ export default function EventDetailPage() {
           </button>
         </div>
 
-        <div className="form-grid inline" style={{ marginTop: 8 }}>
-          <input
-            type="number"
-            min="1"
-            max="5"
-            value={ratingForm.rating}
-            onChange={(e) => setRatingForm((v) => ({ ...v, rating: e.target.value }))}
-          />
-          <input
-            placeholder="Experience comment"
-            value={ratingForm.comment}
-            onChange={(e) => setRatingForm((v) => ({ ...v, comment: e.target.value }))}
-          />
-          <button disabled={actionLoading === "rating"} onClick={submitRating}>
-            {actionLoading === "rating" ? "Processing..." : "Submit Rating"}
-          </button>
-        </div>
+        {!isAdmin && (
+          <div className="form-grid inline" style={{ marginTop: 8 }}>
+            <input
+              type="number"
+              min="1"
+              max="5"
+              value={ratingForm.rating}
+              onChange={(e) => setRatingForm((v) => ({ ...v, rating: e.target.value }))}
+            />
+            <input
+              placeholder="Experience comment"
+              value={ratingForm.comment}
+              onChange={(e) => setRatingForm((v) => ({ ...v, comment: e.target.value }))}
+            />
+            <button disabled={actionLoading === "rating"} onClick={submitRating}>
+              {actionLoading === "rating" ? "Processing..." : "Submit Rating"}
+            </button>
+          </div>
+        )}
 
-        <div className="form-grid" style={{ marginTop: 8 }}>
-          <input
-            placeholder="Committee report title"
-            value={reportForm.title}
-            onChange={(e) => setReportForm((v) => ({ ...v, title: e.target.value }))}
-          />
-          <textarea
-            rows="2"
-            placeholder="Committee report content"
-            value={reportForm.content}
-            onChange={(e) => setReportForm((v) => ({ ...v, content: e.target.value }))}
-          />
-          <select
-            value={reportForm.report_type}
-            onChange={(e) => setReportForm((v) => ({ ...v, report_type: e.target.value }))}
-          >
-            <option value="request">Request</option>
-            <option value="update">Update</option>
-            <option value="issue">Issue</option>
-          </select>
-          <button disabled={actionLoading === "report"} onClick={submitCommitteeReport}>
-            {actionLoading === "report" ? "Processing..." : "Send Committee Report"}
-          </button>
-        </div>
+        {isCommittee && (
+          <div className="form-grid" style={{ marginTop: 8 }}>
+            <input
+              placeholder="Committee report title"
+              value={reportForm.title}
+              onChange={(e) => setReportForm((v) => ({ ...v, title: e.target.value }))}
+            />
+            <textarea
+              rows="2"
+              placeholder="Committee report content"
+              value={reportForm.content}
+              onChange={(e) => setReportForm((v) => ({ ...v, content: e.target.value }))}
+            />
+            <select
+              value={reportForm.report_type}
+              onChange={(e) => setReportForm((v) => ({ ...v, report_type: e.target.value }))}
+            >
+              <option value="request">Request</option>
+              <option value="update">Update</option>
+              <option value="issue">Issue</option>
+            </select>
+            <button disabled={actionLoading === "report"} onClick={submitCommitteeReport}>
+              {actionLoading === "report" ? "Processing..." : "Send Committee Report"}
+            </button>
+          </div>
+        )}
       </div>
 
       {isAdmin && (
@@ -495,6 +568,106 @@ export default function EventDetailPage() {
             {broadcasts.map((b) => (
               <div className="table-item" key={b.id}>
                 <b>{b.title}</b> - {b.message}
+              </div>
+            ))}
+          </div>
+
+          <h4>Accident Reports</h4>
+          <div className="table-list">
+            {accidentReports.length === 0 && <p className="muted">No accidents reported for this event.</p>}
+            {accidentReports.map((a) => (
+              <div key={a.id} className="table-item" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <b>{a.accident_type}</b> <span>by {a.reporter?.username}</span>
+                </div>
+                <p style={{ margin: "4px 0" }}>{a.description}</p>
+                <p style={{ margin: "4px 0", color: "var(--muted)", fontSize: "0.85em" }}>{a.accident_time}</p>
+              </div>
+            ))}
+          </div>
+
+          <h4>Expenditures {event.status === "preparation" ? "(Preparation Period)" : ""}</h4>
+          {event.status === "preparation" && (
+            <div className="form-grid inline" style={{ marginBottom: 8 }}>
+              <input
+                placeholder="Item name"
+                value={expenditureForm.description}
+                onChange={(e) => setExpenditureForm((v) => ({ ...v, description: e.target.value }))}
+              />
+              <input
+                type="number" min="1" placeholder="Qty"
+                value={expenditureForm.quantity}
+                onChange={(e) => setExpenditureForm((v) => ({ ...v, quantity: e.target.value }))}
+                style={{ width: 80 }}
+              />
+              <input
+                type="number" step="0.01" min="0" placeholder="Price/unit"
+                value={expenditureForm.price_per_unit}
+                onChange={(e) => setExpenditureForm((v) => ({ ...v, price_per_unit: e.target.value }))}
+                style={{ width: 120 }}
+              />
+              <span style={{ fontWeight: "bold" }}>
+                Total: ${((Number(expenditureForm.quantity) || 0) * (Number(expenditureForm.price_per_unit) || 0)).toFixed(2)}
+              </span>
+              <button disabled={actionLoading === "expenditure" || !expenditureForm.description || !expenditureForm.price_per_unit} onClick={submitExpenditure}>
+                {actionLoading === "expenditure" ? "Processing..." : "Add Expenditure"}
+              </button>
+            </div>
+          )}
+          <div className="table-list">
+            {expenditures.length === 0 && <p className="muted">No expenditures recorded.</p>}
+            {expenditures.map((e) => (
+              <div key={e.id} className="table-item">
+                <span><b>{e.description}</b> &times;{e.quantity} @ ${e.price_per_unit} = <b>${e.amount}</b></span>
+                <span style={{ color: "var(--muted)", fontSize: "0.85em" }}>{e.spent_on}</span>
+              </div>
+            ))}
+          </div>
+
+          <h4>Committee Reports for This Event</h4>
+          <div className="table-list">
+            {committeeReports.length === 0 && <p className="muted">No reports for this event.</p>}
+            {committeeReports.map((r) => (
+              <div key={r.id} className="table-item" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <b>{r.title}</b> <span>({r.report_type}) by {r.committee?.username}</span>
+                </div>
+                <p style={{ margin: "4px 0" }}>{r.content}</p>
+                {r.admin_response && <p style={{ margin: "4px 0", color: "var(--muted)" }}>Response: {r.admin_response}</p>}
+                {!r.admin_response && (
+                  <div className="row">
+                    <input
+                      placeholder="Write response..."
+                      id={`report-resp-${r.id}`}
+                      style={{ flex: 1 }}
+                    />
+                    <button disabled={actionLoading === `respond-${r.id}`} onClick={() => {
+                      const el = document.getElementById(`report-resp-${r.id}`);
+                      respondReport(r.id, el.value, true);
+                      el.value = "";
+                    }}>
+                      {actionLoading === `respond-${r.id}` ? "..." : "Respond & Resolve"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <h4>All Users</h4>
+          <div className="row" style={{ marginBottom: 8 }}>
+            <label>Filter by role:</label>
+            <select value={userRoleFilter} onChange={(e) => setUserRoleFilter(e.target.value)} style={{ width: "auto" }}>
+              <option value="">All</option>
+              <option value="student">Student</option>
+              <option value="staff">Staff</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div className="table-list">
+            {users.map((u) => (
+              <div key={u.id} className="table-item">
+                <span><b>{u.username}</b> ({u.role}){u.email ? ` - ${u.email}` : ""}</span>
               </div>
             ))}
           </div>

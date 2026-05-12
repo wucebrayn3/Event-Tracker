@@ -196,8 +196,8 @@ class ExpenditureSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Expenditure
-        fields = ["id", "event", "description", "amount", "spent_on", "added_by", "created_at"]
-        read_only_fields = ["id", "added_by", "created_at"]
+        fields = ["id", "event", "description", "quantity", "price_per_unit", "amount", "spent_on", "added_by", "created_at"]
+        read_only_fields = ["id", "added_by", "created_at", "amount"]
 
 
 class CommitteeJoinSerializer(serializers.Serializer):

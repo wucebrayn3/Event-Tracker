@@ -112,7 +112,7 @@ export default function Dashboard() {
           </select>
         </div>
         <div className="event-grid">
-          {events.map((event) => (
+          {events.filter((e) => e.status !== "ended").map((event) => (
             <button
               key={event.id}
               className="event-card"
@@ -126,6 +126,26 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      {events.filter((e) => e.status === "ended").length > 0 && (
+        <div className="section">
+          <h3>Event History (Ended)</h3>
+          <div className="event-grid">
+            {events.filter((e) => e.status === "ended").map((event) => (
+              <button
+                key={event.id}
+                className="event-card"
+                onClick={() => navigate(`/events/${event.id}`)}
+              >
+                <h4>{event.name}</h4>
+                <p>{event.location || "No location"}</p>
+                <p>Status: {event.status}</p>
+                <p>Attendance: {event.attendance_count || 0}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {live && (
         <div className="section">

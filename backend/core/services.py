@@ -73,10 +73,9 @@ def build_chart_payload(event: Event) -> dict:
     )
     expenditures_timeline = (
         Expenditure.objects.filter(event=event)
-        .annotate(day=TruncDate("spent_on"))
-        .values("day")
+        .values("spent_on")
         .annotate(total=Sum("amount"))
-        .order_by("day")
+        .order_by("spent_on")
     )
 
     return {
@@ -100,7 +99,7 @@ def build_chart_payload(event: Event) -> dict:
                 "values": [row["count"] for row in accidents_timeline],
             },
             "expenditures": {
-                "labels": [str(row["day"]) for row in expenditures_timeline],
+                "labels": [str(row["spent_on"]) for row in expenditures_timeline],
                 "values": [float(row["total"] or 0) for row in expenditures_timeline],
             },
         },

@@ -300,7 +300,7 @@ class AttendanceReviewListView(APIView):
 
     def get(self, request, event_id):
         event = get_object_or_404(Event, id=event_id)
-        if event.status != Event.Status.ENDED:
+        if event.status != Event.Status.ENDED and not (request.user.is_superuser or request.user.role == User.Role.ADMIN):
             return Response(
                 {"detail": "Attendance review is only available after the event has ended."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -343,6 +343,8 @@ class CommitteeReportCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         event = serializer.validated_data["event"]
+        if self.request.user.is_superuser or self.request.user.role == User.Role.ADMIN:
+            raise ValueError("Admins cannot submit committee reports.")
         if not user_is_committee(self.request.user, event):
             raise ValueError("Only committee members can submit committee reports.")
         serializer.save(committee=self.request.user)
@@ -359,7 +361,13 @@ class CommitteeReportListView(APIView):
 
     def get(self, request):
         if request.user.is_superuser or request.user.role == User.Role.ADMIN:
-            reports = CommitteeReport.objects.all().order_by("-created_at")
+            reports = CommitteeReport.objects.all()
+            event_id = request.query_params.get("event_id")
+            if event_id:
+                reports = reports.filter(event_id=event_id)
+                if not request.user.is_superuser:
+                    reports = reports.filter(event__created_by=request.user)
+            reports = reports.order_by("-created_at")
         else:
             reports = CommitteeReport.objects.filter(committee=request.user).order_by("-created_at")
         return Response(CommitteeReportSerializer(reports, many=True).data)
@@ -407,12 +415,12 @@ class AccidentReportView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        if not (request.user.is_superuser or request.user.role == User.Role.ADMIN):
+            return Response({"detail": "Only admins can view accident reports."}, status=status.HTTP_403_FORBIDDEN)
         event_id = request.query_params.get("event_id")
         queryset = AccidentReport.objects.all().order_by("-created_at")
         if event_id:
             queryset = queryset.filter(event_id=event_id)
-        if not (request.user.is_superuser or request.user.role == User.Role.ADMIN):
-            queryset = queryset.filter(reporter=request.user)
         return Response(AccidentReportSerializer(queryset, many=True).data)
 
     def post(self, request):
@@ -453,6 +461,14 @@ class ExpenditureView(APIView):
     def post(self, request):
         if not (request.user.is_superuser or request.user.role == User.Role.ADMIN):
             return Response({"detail": "Only admins can add expenditures."}, status=status.HTTP_403_FORBIDDEN)
+        event_id = request.data.get("event")
+        if event_id:
+            event = get_object_or_404(Event, id=event_id)
+            if event.status != Event.Status.PREPARATION:
+                return Response(
+                    {"detail": "Expenditures can only be added during event preparation."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         serializer = ExpenditureSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         expenditure = serializer.save(added_by=request.user)
@@ -503,6 +519,17 @@ class AllEventsPDFView(APIView):
         response = HttpResponse(buffer, content_type="application/pdf")
         response["Content-Disposition"] = 'attachment; filename="all_events_analytics.pdf"'
         return response
+
+
+class UserListView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        users = UserModel.objects.all()
+        role = request.query_params.get("role")
+        if role:
+            users = users.filter(role=role)
+        return Response(UserSerializer(users.order_by("username"), many=True).data)
 
 
 class JSONAnalyzeUploadView(APIView):
